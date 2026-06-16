@@ -1,0 +1,22 @@
+---
+title: "MSD Homework 2, Problem 3"
+author: "Mane Diouf & Mary McTarsney"
+date: '`r Sys.time()`'
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+library(here)
+library(scales)
+library(tidyverse)
+
+theme_set(theme_bw())
+
+knitr::opts_chunk$set(echo = TRUE)
+```
