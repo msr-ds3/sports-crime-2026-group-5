@@ -1,0 +1,16 @@
+---
+title: "Initial Data Loading"
+author: "Mary McTarsney"
+---
+```{r}
+install.packages("cfbfastR")
+library(cfbfastR)
+```
+
+```{r}
+sched <- map_dfr(2000:2005, cfbd_game_info)
+```
+
+```{r}
+write.csv(sched, file = "game_schedule.csv")
+```
