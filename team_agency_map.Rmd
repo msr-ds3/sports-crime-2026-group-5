@@ -15,8 +15,22 @@ output:
 library(here)
 library(scales)
 library(tidyverse)
+library(cfbfastR)
 
 theme_set(theme_bw())
 
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Define the footbal game schedules
+
+```{r}
+sched <- map_dfr(2000:2005, cfbd_game_info) # require API to function
+
+```
+
+# Save the schedule file
+
+```{r}
+write.csv(sched, file = "game_schedule.csv")
 ```
