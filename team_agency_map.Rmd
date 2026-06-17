@@ -66,3 +66,49 @@ write_csv(unique_name, "team_unik.csv")
 ```
 
 Second, we create a list to match each ORI code with the corresponding college town 
+
+```{r}
+header <- read_csv("nibrs_batch_header_1991_2024.csv")
+```
+
+```{r}
+paper_cities <- tibble(
+    city_name=c("akron", "ames", "ann arbor","athens","austin","Blacksburg","boise","clemson","Colorado Springs",
+    "Columbia","Columbus","Denton","East Lansing","Fayetteville","Huntington","Iowa City","Jonesboro",
+    "Kalamazoo","Lawrence","Logan","Lubbock","Morgantown","Moscow","Mount Pleasant","Murfreesboro","Provo"),
+    state_abbreviation=c("oh", "ia","mi","oh","tx","va","id","sc","co","sc","oh","tx","mi","ar","wv","ia","ar","mi",
+    "ks","ut","tx","wv","id","mi","tn","ut"),
+    school=c("the university of akron", "iowa state university","the university of michigan","ohio university",
+        "the University of Texas at Austin","Virginia Polytechnic Institute and State University","Boise State University",
+        "Clemson University","United States Air Force Academy","The University of South Carolina","The Ohio State University",
+        "The University of North Texas","Michigan State University","University of Arkansas","Marshall University",
+        "The University of Iowa","Arkansas State University","Western Michigan University","The University of Kansas",
+        "Utah State University","Texas Tech University","West Virginia University","The University of Idaho",
+        "Eastern Michigan University","Middle Tennessee State University","Brigham Young University")
+) %>%
+    mutate(across(everything(), ~ str_to_lower(as.character(.)))) %>%
+    mutate(team=c("Akron","Iowa State","Michigan","Ohio","Texas","Virginia Tech","Boise State","Clemson",
+        "Air Force","South Carolina","Ohio State","North Texas","Michigan State","Arkansas","Marshall","Iowa",
+        "Arkansas State","Western Michigan","Kansas","Utah State","Texas Tech","West Virginia","Idaho",
+        "Eastern Michigan","Middle Tennessee","BYU")) 
+```
+
+```{r}
+head <- header %>%
+    filter(year == "2000") %>%
+    select(c("ori","city_name","state_abbreviation","agency_indicator")) %>%
+    unique()
+```
+
+```{r}
+s2<- sched %>%
+    select(c("home_team")) %>% 
+    unique()
+```
+ 
+```{r}
+ori_mapping <- left_join(paper_cities, head, by=c("city_name","state_abbreviation")) %>% 
+    filter(agency_indicator=="city")
+
+write_csv(ori_mapping, "ori_mapping.csv")
+```
