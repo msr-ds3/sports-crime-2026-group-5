@@ -25,53 +25,27 @@ knitr::opts_chunk$set(echo = TRUE)
 # Define the footbal game schedules
 
 ```{r}
-sched <- map_dfr(2000:2005, cfbd_game_info)
+sched <- map_dfr(2000:2005, espn_cfb_schedule)
 
-# require API to function - took care of it in the .gitignore 
-# just setup .Renviron once 
 ```
 
 # Save the schedule file
 
 ```{r}
-write.csv(sched, file = "game_schedule.csv")
+write_csv(sched, file = "game_schedule.csv")
 ```
 
 # -- Team to agency mapping --
-First, we are creating a list from schedules to get unique teams
-matching their state or city
 
+## Load the batch header file
 ```{r}
-# This should give out a human readable unique team name 
-# matched with their city or state
-
-unique_name <- sched %>%
-  select(season, home_team, away_team) %>%
-  pivot_longer(
-    cols = c(home_team, away_team),
-    names_to = "team_role",
-    values_to = "team_name"
-  ) %>%
-  mutate(
-    team_name = str_squish(team_name), # for text cleanup
-    team_key  = team_name %>%
-      str_to_lower() %>% # make case consistent, uppercase or lowercase don't matter
-      str_replace_all("[^a-z0-9 ]", "") # remove punctuation/symbols
-  ) %>%
-  distinct(team_name, team_key) %>% # keep unique team name with key pairs (remove duplicates from repeated games)
-  arrange(team_name) # sort alphabetically
-
-# save it in a csv file
-write_csv(unique_name, "team_unik.csv")
-```
-
-Second, we create a list to match each ORI code with the corresponding college town 
-
-```{r}
-header <- read_csv("nibrs_batch_header_1991_2024.csv")
+batch_header <- read_csv("nibrs_batch_header_1991_2024.csv")
 ```
 
 ```{r}
+# Create a dataset that contains the needed 26 schools towns with their
+# corresponding state abbreviations, school names, and short team labels
+
 paper_cities <- tibble(
     city_name=c("akron", "ames", "ann arbor","athens","austin","Blacksburg","boise","clemson","Colorado Springs",
     "Columbia","Columbus","Denton","East Lansing","Fayetteville","Huntington","Iowa City","Jonesboro",
@@ -93,22 +67,77 @@ paper_cities <- tibble(
         "Eastern Michigan","Middle Tennessee","BYU")) 
 ```
 
+## Overall records with ori, city, state, and agency agency indicator
+
 ```{r}
-head <- header %>%
-    filter(year == "2000") %>%
+header <- batch_header %>%
+    filter(year == 2000) %>%
     select(c("ori","city_name","state_abbreviation","agency_indicator")) %>%
     unique()
 ```
-
 ```{r}
-s2<- sched %>%
-    select(c("home_team")) %>% 
-    unique()
-```
- 
-```{r}
-ori_mapping <- left_join(paper_cities, head, by=c("city_name","state_abbreviation")) %>% 
-    filter(agency_indicator=="city")
+ori_mapping <- left_join(
+    paper_cities, 
+    header, 
+    by=c("city_name","state_abbreviation")
+    ) %>% 
+    filter(agency_indicator == "city")
 
 write_csv(ori_mapping, "ori_mapping.csv")
+``` 
+
+# Reproduction of table 2 (Distribution of games by day of week)
+
+```{r}
+# Initiate the team names with their matching universities
+# so that we can easily match if the teams are either
+# home teams or away teams  
+
+university_team_lookup <- tribble(
+  ~university, ~team_name,
+  'the university of akron', 'Zips',
+  'iowa state university', 'Cyclones',
+  'the university of michigan', 'Wolverines',
+  'ohio university', 'Bobcats',
+  'the university of texas at austin', 'Longhorns',
+  'virginia polytechnic institute and state university', 'Hokies',
+  'boise state university', 'Broncos',
+  'clemson university', 'Tigers',
+  'united states air force academy', 'Falcons',
+  'the university of south carolina', 'Gamecocks',
+  'the ohio state university', 'Buckeyes',
+  'the university of north texas', 'Mean Green',
+  'michigan state university', 'Spartans',
+  'university of arkansas', 'Razorbacks',
+  'marshall university', 'Thundering Herd',
+  'the university of iowa', 'Hawkeyes',
+  'arkansas state university', 'Red Wolves',
+  'western michigan university', 'Broncos2',
+  'the university of kansas', 'Jayhawks',
+  'utah state university', 'Aggies',
+  'texas tech university', 'Red Raiders',
+  'west virginia university', 'Mountaineers',
+  'the university of idaho', 'Vandals',
+  'eastern michigan university', 'Eagles',
+  'middle tennessee state university', 'Blue Raiders',
+  'brigham young university', 'Cougars'
+)
+
+# Recreate table 2 that creates a weekday summary of games and offenses 
+# Based on the initial schedule file,
+# we filter out the home or away team that played daily
+
+game_week <- sched %>%
+    mutate(day_of_the_week=lubridate::wday(game_date, label = TRUE, abbr = FALSE))%>% 
+    filter(home_team_name %in% university_team_lookup$team_name | away_team_name %in% university_team_lookup$team_name) %>% 
+    group_by(day_of_the_week) %>% 
+    summarize(
+        num_games=n()
+    )
+
+# Add an additional row for "Total" to the existing table 
+game_week <- bind_rows(
+  game_week,
+  tibble(day_of_the_week = "Total", num_games = sum(game_week$num_games))
+)
 ```
