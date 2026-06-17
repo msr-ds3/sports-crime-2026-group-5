@@ -25,8 +25,10 @@ knitr::opts_chunk$set(echo = TRUE)
 # Define the footbal game schedules
 
 ```{r}
-sched <- map_dfr(2000:2005, cfbd_game_info) # require API to function
+sched <- map_dfr(2000:2005, cfbd_game_info)
 
+# require API to function - took care of it in the .gitignore 
+# just setup .Renviron once 
 ```
 
 # Save the schedule file
@@ -34,3 +36,33 @@ sched <- map_dfr(2000:2005, cfbd_game_info) # require API to function
 ```{r}
 write.csv(sched, file = "game_schedule.csv")
 ```
+
+# -- Team to agency mapping --
+First, we are creating a list from schedules to get unique teams
+matching their state or city
+
+```{r}
+# This should give out a human readable unique team name 
+# matched with their city or state
+
+unique_name <- sched %>%
+  select(season, home_team, away_team) %>%
+  pivot_longer(
+    cols = c(home_team, away_team),
+    names_to = "team_role",
+    values_to = "team_name"
+  ) %>%
+  mutate(
+    team_name = str_squish(team_name), # for text cleanup
+    team_key  = team_name %>%
+      str_to_lower() %>% # make case consistent, uppercase or lowercase don't matter
+      str_replace_all("[^a-z0-9 ]", "") # remove punctuation/symbols
+  ) %>%
+  distinct(team_name, team_key) %>% # keep unique team name with key pairs (remove duplicates from repeated games)
+  arrange(team_name) # sort alphabetically
+
+# save it in a csv file
+write_csv(unique_name, "team_unik.csv")
+```
+
+Second, we create a list to match each ORI code with the corresponding college town 
