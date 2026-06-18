@@ -22,16 +22,16 @@ theme_set(theme_bw())
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Define the footbal game schedules
+# Define the football game schedules
 
 ```{r}
 sched <- map_dfr(2000:2005, espn_cfb_schedule)
-
 ```
 
 # Save the schedule file
 
 ```{r}
+# Optional, save for use in other files
 write_csv(sched, file = "game_schedule.csv")
 ```
 
@@ -39,43 +39,51 @@ write_csv(sched, file = "game_schedule.csv")
 
 ## Load the batch header file
 ```{r}
-batch_header <- read_csv("nibrs_batch_header_1991_2024.csv")
-```
-
-```{r}
-# Create a dataset that contains the needed 26 schools towns with their
-# corresponding state abbreviations, school names, and short team labels
-
-paper_cities <- tibble(
-    city_name=c("akron", "ames", "ann arbor","athens","austin","Blacksburg","boise","clemson","Colorado Springs",
-    "Columbia","Columbus","Denton","East Lansing","Fayetteville","Huntington","Iowa City","Jonesboro",
-    "Kalamazoo","Lawrence","Logan","Lubbock","Morgantown","Moscow","Mount Pleasant","Murfreesboro","Provo"),
-    state_abbreviation=c("oh", "ia","mi","oh","tx","va","id","sc","co","sc","oh","tx","mi","ar","wv","ia","ar","mi",
-    "ks","ut","tx","wv","id","mi","tn","ut"),
-    school=c("the university of akron", "iowa state university","the university of michigan","ohio university",
-        "the University of Texas at Austin","Virginia Polytechnic Institute and State University","Boise State University",
-        "Clemson University","United States Air Force Academy","The University of South Carolina","The Ohio State University",
-        "The University of North Texas","Michigan State University","University of Arkansas","Marshall University",
-        "The University of Iowa","Arkansas State University","Western Michigan University","The University of Kansas",
-        "Utah State University","Texas Tech University","West Virginia University","The University of Idaho",
-        "Eastern Michigan University","Middle Tennessee State University","Brigham Young University")
-) %>%
-    mutate(across(everything(), ~ str_to_lower(as.character(.)))) %>%
-    mutate(team=c("Akron","Iowa State","Michigan","Ohio","Texas","Virginia Tech","Boise State","Clemson",
-        "Air Force","South Carolina","Ohio State","North Texas","Michigan State","Arkansas","Marshall","Iowa",
-        "Arkansas State","Western Michigan","Kansas","Utah State","Texas Tech","West Virginia","Idaho",
-        "Eastern Michigan","Middle Tennessee","BYU")) 
-```
-
-## Overall records with ori, city, state, and agency agency indicator
-
-```{r}
-header <- batch_header %>%
+# Select for columns relevant for matching ori to college towns
+header <- read_csv("nibrs_batch_header_1991_2024.csv") %>%
     filter(year == 2000) %>%
     select(c("ori","city_name","state_abbreviation","agency_indicator")) %>%
     unique()
 ```
+
 ```{r}
+# Create a dataset that contains the needed 26 college towns with their
+# corresponding state abbreviations, school names, and short school labels
+
+paper_cities <- tribble(
+  ~city_name, ~state_abbreviation, ~school, ~school_short,
+  "akron", "oh", "the university of akron", "Akron",
+  "ames", "ia", "iowa state university", "Iowa State",
+  "ann arbor", "mi", "the university of michigan", "Michigan",
+  "athens", "oh", "ohio university", "Ohio",
+  "austin", "tx", "the university of texas at austin", "Texas",
+  "blacksburg", "va", "virginia polytechnic institute and state university", "Virginia Tech",
+  "boise", "id", "boise state university", "Boise State",
+  "clemson", "sc",  "clemson university", "Clemson",
+  "colorado springs", "co",  "united states air force academy", "Air Force",
+  "columbia", "sc", "the university of south carolina", "South Carolina",
+  "columbus", "oh",  "the ohio state university", "Ohio State",
+  "denton", "tx", "the university of north texas", "North Texas",
+  "east lansing", "mi", "michigan state university", "Michigan State",
+  "fayetteville", "ar", "university of arkansas", "Arkansas",
+  "huntington", "wv", "marshall university", "Marshall",
+  "iowa city", "ia", "the university of iowa", "Iowa",
+  "jonesboro", "ar", "arkansas state university", "Arkansas State",
+  "kalamazoo", "mi", "western michigan university", "Western Michigan",
+  "lawrence", "ks", "the university of kansas", "Kansas",
+  "logan", "ut",  "utah state university", "Utah State",
+  "lubbock", "tx", "texas tech university", "Texas Tech",
+  "morgantown", "wv", "west virginia university", "West Virginia",
+  "moscow", "id", "the university of idaho", "Idaho",
+  "mount pleasant", "mi", "eastern michigan university", "Eastern Michigan",
+  "murfreesboro", "tn", "middle tennessee state university", "Middle Tennessee",
+  "provo", "ut", "brigham young university", "BYU"
+)
+```
+
+## Overall records with ori, city, state, and agency agency indicator
+```{r}
+# Match each college town with respective ori
 ori_mapping <- left_join(
     paper_cities, 
     header, 
@@ -83,11 +91,11 @@ ori_mapping <- left_join(
     ) %>% 
     filter(agency_indicator == "city")
 
+# Save for future use in other files
 write_csv(ori_mapping, "ori_mapping.csv")
 ``` 
 
 # Reproduction of table 2 (Distribution of games by day of week)
-
 ```{r}
 # Initiate the team names with their matching universities
 # so that we can easily match if the teams are either
@@ -122,13 +130,13 @@ university_team_lookup <- tribble(
   'middle tennessee state university', 'Blue Raiders',
   'brigham young university', 'Cougars'
 )
-
+```
 # Recreate table 2 that creates a weekday summary of games and offenses 
 # Based on the initial schedule file,
 # we filter out the home or away team that played daily
-
+```{r}
 game_week <- sched %>%
-    mutate(day_of_the_week=lubridate::wday(game_date, label = TRUE, abbr = FALSE))%>% 
+    mutate(day_of_the_week=wday(game_date, label = TRUE, abbr = FALSE))%>% 
     filter(home_team_name %in% university_team_lookup$team_name | away_team_name %in% university_team_lookup$team_name) %>% 
     group_by(day_of_the_week) %>% 
     summarize(
@@ -140,4 +148,6 @@ game_week <- bind_rows(
   game_week,
   tibble(day_of_the_week = "Total", num_games = sum(game_week$num_games))
 )
+
+game_week
 ```
