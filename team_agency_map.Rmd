@@ -39,7 +39,7 @@ write_csv(sched, file = "game_schedule.csv")
 
 ## Load the batch header file
 ```{r}
-# Select for columns relevant for matching ori to college towns
+# Select relevant columns for matching ori to college towns
 header <- read_csv("nibrs_batch_header_1991_2024.csv") %>%
     filter(year == 2000) %>%
     select(c("ori","city_name","state_abbreviation","agency_indicator")) %>%
@@ -96,6 +96,7 @@ write_csv(ori_mapping, "ori_mapping.csv")
 ``` 
 
 # REPRODUCING RESULTS FROM THE PAPER
+
 ```{r}
 # Initiate the team names with their matching universities
 # so that we can easily match if the teams are either
@@ -134,20 +135,25 @@ university_team_lookup <- tribble(
 
 # Reproducing Appendix Table 1
 ```{r}
-filtered_sched <- sched %>%     
-    filter(home_team_name %in% university_team_lookup$team_name 
-    | away_team_name %in% university_team_lookup$team_name )
+filtered_sched <- sched %>%    
+    filter(
+        home_team_name %in% university_team_lookup$team_name | 
+        away_team_name %in% university_team_lookup$team_name 
+    )
 ```
 
-# Essentially want each row to be a unique day/town combo, including the count of assault, count of vandalism,
-# and **TO DO: denote game type (home/away/no game)**
+# Essentially want each row to be a unique day/town combo, including the count of assault, count of vandalism, and
+# **TO DO: denote game type (home/away/no game)**
+
 ```{r}
+# Load the offense data file
 offense <- read_csv("offense.csv")
+
 # Create counts for vandalism and assault for each unique ori/date pair
 offense_count <- offense %>%
     mutate( offense_type=case_when(
         str_detect(ucr_offense_code,"vandalism") ~ "vandalism",
-            TRUE ~ "assault"
+        TRUE ~ "assault"
     )) %>%
     select(-ucr_offense_code) %>%
     group_by(ori,incident_date,offense_type) %>%
@@ -212,12 +218,12 @@ appendix_table
 ```
 
 # REPRODUCING TABLE 2
+## Recreate table 2 that creates a weekday summary of games and observations
 
-
-# Recreate table 2 that creates a weekday summary of games and offenses 
+```{r}
 # Based on the initial schedule file,
 # we filter out the home or away team that played daily
-```{r}
+
 game_week <- filtered_sched %>%
     mutate(day_of_the_week=wday(game_date, label = TRUE, abbr = FALSE))%>% 
     group_by(day_of_the_week) %>% 
@@ -228,6 +234,8 @@ game_week2 <- game_week %>%
 ```
 
 ```{r}
+# Observations represent the number of times each days were observed 
+
 observations <- final_offense_count %>%
     mutate(day_of_the_week=wday(date, label = TRUE, abbr = FALSE)) %>%
     group_by(day_of_the_week) %>%
