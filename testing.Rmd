@@ -1,0 +1,111 @@
+# GOAL NOW, FIGURING OUT HOW TO DENOTE HOME GAME VS AWAY GAME
+
+```{r}
+filtered_sched
+```
+```{r}
+final_offense_count
+```
+```{r}
+ori_mapping
+```
+```{r}
+relevant_sched <- filtered_sched %>%
+    select(c("game_date","home_team_name","away_team_name")) %>% 
+    rename(home=home_team_name, away=away_team_name) %>%
+    pivot_longer(
+        cols=c("home","away"),
+        names_to="game_type",
+        values_to="team_name"
+    )
+```
+```{r}
+sched_ori <- left_join(relevant_sched,university_team_lookup) %>% 
+    rename(school=university,date=game_date) %>%
+    left_join(select(ori_mapping,school,ori), by="school") 
+
+sched_ori
+```
+```{r}
+game_type_of <- left_join(final_offense_count, sched_ori, by=c("date","ori")) %>% select(- "team_name",-"school") %>%
+    replace_na(list(game_type="no game")) %>% 
+    mutate(game_type=case_when(
+        game_type == "home" ~ "home game",
+        game_type == "away" ~ "away game",
+        TRUE ~ "no game"
+    ))
+
+game_type_of
+```
+```{r}
+# JUST TESTING
+game_type_of %>%
+    group_by(game_type) %>%
+    summarise(count=n())
+```
+
+```{r}
+no_game_of <- game_type_of %>% filter(game_type=="no game")
+home_game_of <- game_type_of %>% filter(game_type=="home game")
+away_game_of <- game_type_of %>% filter(game_type=="away game")
+```
+
+```{r}
+appendix_table_no <- tibble(
+    stat=c("mean","sd","0.25q","0.50q","0.75q","0.90q"),
+    assault=c(mean(no_game_of$assault),
+        sd(no_game_of$assault),
+        quantile(no_game_of$assault, probs=0.25),
+        quantile(no_game_of$assault, probs=0.5),
+        quantile(no_game_of$assault, probs=0.75),
+        quantile(no_game_of$assault, probs=0.9)),
+    vandalism=c(mean(no_game_of$vandalism),
+        sd(no_game_of$vandalism),
+        quantile(no_game_of$vandalism, probs=0.25),
+        quantile(no_game_of$vandalism, probs=0.5),
+        quantile(no_game_of$vandalism, probs=0.75),
+        quantile(no_game_of$vandalism, probs=0.9))
+)
+
+appendix_table_no
+```
+
+```{r}
+appendix_table_home <- tibble(
+    stat=c("mean","sd","0.25q","0.50q","0.75q","0.90q"),
+    assault=c(mean(home_game_of$assault),
+        sd(home_game_of$assault),
+        quantile(home_game_of$assault, probs=0.25),
+        quantile(home_game_of$assault, probs=0.5),
+        quantile(home_game_of$assault, probs=0.75),
+        quantile(home_game_of$assault, probs=0.9)),
+    vandalism=c(mean(home_game_of$vandalism),
+        sd(home_game_of$vandalism),
+        quantile(home_game_of$vandalism, probs=0.25),
+        quantile(home_game_of$vandalism, probs=0.5),
+        quantile(home_game_of$vandalism, probs=0.75),
+        quantile(home_game_of$vandalism, probs=0.9))
+)
+
+appendix_table_home
+```
+
+```{r}
+appendix_table_away <- tibble(
+    stat=c("mean","sd","0.25q","0.50q","0.75q","0.90q"),
+    assault=c(mean(away_game_of$assault),
+        sd(away_game_of$assault),
+        quantile(away_game_of$assault, probs=0.25),
+        quantile(away_game_of$assault, probs=0.5),
+        quantile(away_game_of$assault, probs=0.75),
+        quantile(away_game_of$assault, probs=0.9)),
+    vandalism=c(mean(away_game_of$vandalism),
+        sd(away_game_of$vandalism),
+        quantile(away_game_of$vandalism, probs=0.25),
+        quantile(away_game_of$vandalism, probs=0.5),
+        quantile(away_game_of$vandalism, probs=0.75),
+        quantile(away_game_of$vandalism, probs=0.9))
+)
+
+appendix_table_away
+```

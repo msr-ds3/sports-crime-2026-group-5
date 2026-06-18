@@ -193,7 +193,7 @@ final_offense_count
 # REPRODUCING TABLE 1
 ```{r}
 appendix_table <- tibble(
-    stat=c("mean","sd","0.25q","0,50q","0.75q","0.90q"),
+    stat=c("mean","sd","0.25q","0.50q","0.75q","0.90q"),
     assault=c(mean(final_offense_count$assault),
         sd(final_offense_count$assault),
         quantile(final_offense_count$assault, probs=0.25),
