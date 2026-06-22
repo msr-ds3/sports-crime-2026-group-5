@@ -26,20 +26,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 sched <- map_dfr(2000:2005, espn_cfb_schedule)
-```
 
 # Save the schedule file
-
-```{r}
-# Optional, save for use in other files
+# Optional for use in other files
 write_csv(sched, file = "game_schedule.csv")
 ```
 
-# -- Team to agency mapping --
+# Team to agency mapping
 
-## Load the batch header file
 ```{r}
+# Load the batch header file and 
 # Select relevant columns for matching ori to college towns
+
 header <- read_csv("nibrs_batch_header_1991_2024.csv") %>%
     filter(year == 2000) %>%
     select(c("ori","city_name","state_abbreviation","agency_indicator")) %>%
@@ -85,9 +83,9 @@ paper_cities <- tribble(
 ```{r}
 # Match each college town with respective ori
 ori_mapping <- left_join(
-    paper_cities, 
-    header, 
-    by=c("city_name","state_abbreviation")
+        paper_cities, 
+        header, 
+        by=c("city_name","state_abbreviation")
     ) %>% 
     filter(agency_indicator == "city")
 
@@ -95,7 +93,8 @@ ori_mapping <- left_join(
 write_csv(ori_mapping, "ori_mapping.csv")
 ``` 
 
-# REPRODUCING RESULTS FROM THE PAPER
+# Reproduction of Appendix Table 1
+## Data Collection
 
 ```{r}
 # Initiate the team names with their matching universities
@@ -133,8 +132,9 @@ university_team_lookup <- tribble(
 )
 ```
 
-# Reproducing Appendix Table 1
 ```{r}
+# Only filter out the teams we need
+
 filtered_sched <- sched %>%    
     filter(
         home_team_name %in% university_team_lookup$team_name | 
@@ -142,8 +142,8 @@ filtered_sched <- sched %>%
     )
 ```
 
-# Essentially want each row to be a unique day/town combo, including the count of assault, count of vandalism, and
-# **TO DO: denote game type (home/away/no game)**
+Essentially want each row to be a unique day/town combo, including the count of assault, count of vandalism, and
+**TO DO: denote game type (home/away/no game)**
 
 ```{r}
 # Load the offense data file
@@ -166,7 +166,7 @@ offense_count <- offense %>%
     rename(date=incident_date)
 ```
 
-# Create a table of base dates we are interested in: Aug 20 - Dec 10 from 2000 to 2005
+### Create a table of base dates we are interested in: Aug 20 - Dec 10 from 2000 to 2005
 ```{r}
 base_dates <- tibble(
     dates=c(
@@ -182,21 +182,28 @@ base_dates <- tibble(
 base_dates
 ```
 
-# Create a table of unique combinations of all base dates with all 26 oris. This ensures that
-# dates where no offenses were recorded are included in future stats. 
+### Create a table of unique combinations of all base dates with all 26 oris. 
+
+This ensures that dates where no offenses were recorded are included in future stats. 
+
 ```{r}
 unique_combos <- crossing(date=base_dates$dates, ori=ori_mapping$ori)
 ```
 
-# Total offense counts (assault/vandalism) by day for each of the 26 oris
+### Total offense counts (assault/vandalism) by day for each of the 26 oris
+
 ```{r}  
-final_offense_count <- left_join(unique_combos,offense_count,by=c("ori","date")) %>%
+final_offense_count <- left_join(
+        unique_combos,
+        offense_count,
+        by=c("ori","date")
+    ) %>%
     replace_na(list(assault=0,vandalism=0))
 
 final_offense_count
 ```
 
-# REPRODUCING TABLE 1
+## Final Reproduction
 ```{r}
 appendix_table <- tibble(
     stat=c("mean","sd","0.25q","0.50q","0.75q","0.90q"),
@@ -214,11 +221,17 @@ appendix_table <- tibble(
         quantile(final_offense_count$vandalism, probs=0.9))
 )
 
-appendix_table
+knitr::kable(
+    appendix_table,
+    caption = "Descriptive Statistics for Count Variables"
+)
+
 ```
 
-# REPRODUCING TABLE 2
-## Recreate table 2 that creates a weekday summary of games and observations
+# Reproduction of Table 2
+Table 2 creates a weekday summary of games and observations
+
+## Data Collection
 
 ```{r}
 # Based on the initial schedule file,
@@ -230,7 +243,12 @@ game_week <- filtered_sched %>%
     summarize(num_games=n())
     
 game_week2 <- game_week %>% 
-  bind_rows(tibble(day_of_the_week = "Total", num_games = sum(game_week$num_games)))
+  bind_rows(
+        tibble(
+            day_of_the_week = "Total", 
+            num_games = sum(game_week$num_games)
+        )
+   )
 ```
 
 ```{r}
@@ -242,10 +260,28 @@ observations <- final_offense_count %>%
     summarize(observation_count=n())
   
 observations2 <- observations %>%
-    bind_rows(tibble(day_of_the_week = "Total", observation_count = sum(observations$observation_count)))
+    bind_rows(
+        tibble(
+            day_of_the_week = "Total", 
+            observation_count = sum(observations$observation_count)
+        )
+    )
 ```
 
+## Final Reproduction
+
 ```{r}
-table_2 <- left_join(game_week2,observations2)
-table_2
+# Rename the columns' name
+table_2 <- left_join(game_week2,observations2, by = c("day_of_the_week"))%>%
+    rename(
+        `Day of Week` = day_of_the_week,
+        `Games` = num_games,
+        `Observations` = observation_count
+    )
+
+# Add a title
+knitr::kable(
+    table_2,
+    caption = "Distribution of Game Days by Day of the Week"
+)
 ```
